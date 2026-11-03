@@ -19,11 +19,13 @@
 </head>
 <body>
   <!-- 請將下面的 src 網址替換為你真實的 GAS /exec 網址 -->
-  <iframe 
-    id="app-frame"
-    src="https://script.google.com/macros/s/AKfycbzxOpCI4OvMyfH_S6CCeW_F2heA3rZ9bgCWd4h04FVTkwahk0dHVBfCfGm_1X-HB2Om/exec"
-    allow="geolocation">
-  </iframe>
+<iframe 
+  id="app-frame"
+  src="https://script.google.com/macros/s/AKfycbzxOpCI4OvMyfH_S6CCeW_F2heA3rZ9bgCWd4h04FVTkwahk0dHVBfCfGm_1X-HB2Om/exec"
+  allow="geolocation"
+  crossorigin="anonymous"
+  sandbox="allow-scripts allow-same-origin allow-forms allow-popups">
+</iframe>
 
   <script>
     // 註冊 Service Worker 以達到 PWA 標準
