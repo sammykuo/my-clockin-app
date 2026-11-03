@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WEB 打卡系統</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d6efd">
+  <style>
+    html, body, iframe {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      border: none;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <!-- 請將下面的 src 網址替換為你真實的 GAS /exec 網址 -->
+  <iframe 
+    id="app-frame"
+    src="https://script.google.com/macros/s/AKfycbzxOpCI4OvMyfH_S6CCeW_F2heA3rZ9bgCWd4h04FVTkwahk0dHVBfCfGm_1X-HB2Om/exec"
+    allow="geolocation">
+  </iframe>
+
+  <script>
+    // 註冊 Service Worker 以達到 PWA 標準
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
+    }
+  </script>
+</body>
+</html>
