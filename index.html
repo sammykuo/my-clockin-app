@@ -18,7 +18,6 @@
   </style>
 </head>
 <body>
-  <!-- 請將下面的 src 網址替換為你真實的 GAS /exec 網址 -->
   <iframe 
     id="app-frame"
     src="https://script.google.com/macros/s/AKfycbzxOpCI4OvMyfH_S6CCeW_F2heA3rZ9bgCWd4h04FVTkwahk0dHVBfCfGm_1X-HB2Om/exec"
@@ -26,38 +25,50 @@
   </iframe>
 
   <script>
-    // 註冊 Service Worker 以達到 PWA 標準
+    const iframe = document.getElementById('app-frame');
+
+    // PWA Service Worker 註冊
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
     }
 
-// --- Helper: 讀寫 Cookie (專門為解決 iOS PWA 記憶限制設計) ---
-function setCookie(name, value, days) {
-  let expires = "";
-  if (days) {
-    let date = new Date();
-    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-    expires = "; expires=" + date.toUTCString();
-  }
-  // SameSite=Lax 確保 iOS PWA 在內嵌環境下依然能順利存取
-  document.cookie = name + "=" + encodeURIComponent(value || "") + expires + "; path=/; SameSite=Lax";
-}
+    // 接收來自 iframe (GAS) 的跨網域訊息
+    window.addEventListener('message', function(event) {
+      if (!event.data || typeof event.data !== 'object') return;
 
-function getCookie(name) {
-  let nameEQ = name + "=";
-  let ca = document.cookie.split(';');
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i];
-    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-    if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
-  }
-  return null;
-}
+      const action = event.data.action;
+      
+      if (action === 'SAVE_CREDENTIALS') {
+        // GAS 登入成功後要求外層儲存憑證
+        localStorage.setItem('pwa_auto_email', event.data.email);
+        localStorage.setItem('pwa_auto_pass', event.data.pass);
+      } else if (action === 'CLEAR_CREDENTIALS') {
+        // 登出時清空外層憑證
+        localStorage.removeItem('pwa_auto_email');
+        localStorage.removeItem('pwa_auto_pass');
+      } else if (action === 'REQUEST_CREDENTIALS') {
+        // GAS 載入完成，向外層索取帳密
+        sendCredentialsToFrame();
+      }
+    });
 
-function eraseCookie(name) {
-  document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-}
+    // 當 iframe 載入完成時，主動傳送儲存的帳密
+    iframe.onload = function() {
+      sendCredentialsToFrame();
+    };
 
+    function sendCredentialsToFrame() {
+      const savedEmail = localStorage.getItem('pwa_auto_email');
+      const savedPass = localStorage.getItem('pwa_auto_pass');
+
+      if (savedEmail && savedPass) {
+        iframe.contentWindow.postMessage({
+          action: 'AUTO_LOGIN',
+          email: savedEmail,
+          pass: savedPass
+        }, '*');
+      }
+    }
   </script>
 </body>
 </html>
