@@ -30,6 +30,59 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
     }
+
+    window.addEventListener('load', function() {
+  setTimeout(function() {
+    try {
+      let savedEmail = localStorage.getItem('auto_login_email');
+      let savedPass = localStorage.getItem('auto_login_pass');
+
+      if (savedEmail && savedPass) {
+        let emailInput = document.getElementById('login-email');
+        let passInput = document.getElementById('login-pass');
+        let rememberBox = document.getElementById('remember-me');
+
+        if (emailInput && passInput) {
+          emailInput.value = savedEmail;
+          passInput.value = savedPass;
+          if (rememberBox) rememberBox.checked = true;
+
+          // 自動執行登入
+          if (typeof handleLogin === 'function') {
+            handleLogin();
+          }
+        }
+      }
+    } catch (e) {
+      console.log('PWA LocalStorage 存取失敗:', e);
+    }
+  }, 300); // 延遲 300ms 確保 iOS PWA 內部資源載入完畢
+});
+
+// 處理登入動作
+function handleLogin() {
+  let email = document.getElementById('login-email').value.trim();
+  let pass = document.getElementById('login-pass').value.trim();
+  let remember = document.getElementById('remember-me').checked;
+
+  if (!email || !pass) return alert('請輸入帳號與密碼');
+
+  google.script.run.withSuccessHandler(res => {
+    if (res.success) {
+      if (remember) {
+        // 寫入當前 App 獨立沙盒的 LocalStorage
+        localStorage.setItem('auto_login_email', email);
+        localStorage.setItem('auto_login_pass', pass);
+      } else {
+        localStorage.removeItem('auto_login_email');
+        localStorage.removeItem('auto_login_pass');
+      }
+      enterApp(res);
+    } else {
+      alert(res.message);
+    }
+  }).loginUser(email, pass);
+}
   </script>
 </body>
 </html>
