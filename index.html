@@ -31,11 +31,40 @@
       navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
     }
 
-    window.addEventListener('load', function() {
+// --- Helper: 讀寫 Cookie (專門為解決 iOS PWA 記憶限制設計) ---
+function setCookie(name, value, days) {
+  let expires = "";
+  if (days) {
+    let date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    expires = "; expires=" + date.toUTCString();
+  }
+  // SameSite=Lax 確保 iOS PWA 在內嵌環境下依然能順利存取
+  document.cookie = name + "=" + encodeURIComponent(value || "") + expires + "; path=/; SameSite=Lax";
+}
+
+function getCookie(name) {
+  let nameEQ = name + "=";
+  let ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
+  }
+  return null;
+}
+
+function eraseCookie(name) {
+  document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+}
+
+// --- 頁面載入時觸發：優先從 Cookie 或 LocalStorage 讀取 ---
+window.addEventListener('load', function() {
   setTimeout(function() {
     try {
-      let savedEmail = localStorage.getItem('auto_login_email');
-      let savedPass = localStorage.getItem('auto_login_pass');
+      // 雙重讀取：優先讀取 Cookie，若無則讀取 LocalStorage
+      let savedEmail = getCookie('auto_login_email') || localStorage.getItem('auto_login_email');
+      let savedPass = getCookie('auto_login_pass') || localStorage.getItem('auto_login_pass');
 
       if (savedEmail && savedPass) {
         let emailInput = document.getElementById('login-email');
@@ -54,12 +83,12 @@
         }
       }
     } catch (e) {
-      console.log('PWA LocalStorage 存取失敗:', e);
+      console.log('iOS 讀取帳密暫存失敗:', e);
     }
-  }, 300); // 延遲 300ms 確保 iOS PWA 內部資源載入完畢
+  }, 400); // 延遲 400ms 確保 iOS PWA 內部資源載入完畢
 });
 
-// 處理登入動作
+// --- 處理登入與寫入雙重記憶 ---
 function handleLogin() {
   let email = document.getElementById('login-email').value.trim();
   let pass = document.getElementById('login-pass').value.trim();
@@ -70,18 +99,43 @@ function handleLogin() {
   google.script.run.withSuccessHandler(res => {
     if (res.success) {
       if (remember) {
-        // 寫入當前 App 獨立沙盒的 LocalStorage
-        localStorage.setItem('auto_login_email', email);
-        localStorage.setItem('auto_login_pass', pass);
+        // 1. 寫入 LocalStorage
+        try {
+          localStorage.setItem('auto_login_email', email);
+          localStorage.setItem('auto_login_pass', pass);
+        } catch (e) {}
+
+        // 2. 雙重保障：寫入長效 Cookie (保存 365 天)
+        setCookie('auto_login_email', email, 365);
+        setCookie('auto_login_pass', pass, 365);
       } else {
         localStorage.removeItem('auto_login_email');
         localStorage.removeItem('auto_login_pass');
+        eraseCookie('auto_login_email');
+        eraseCookie('auto_login_pass');
       }
       enterApp(res);
     } else {
       alert(res.message);
     }
   }).loginUser(email, pass);
+}
+
+// --- 登出時清空 Cookie 與 LocalStorage ---
+function logout() {
+  localStorage.removeItem('auto_login_email');
+  localStorage.removeItem('auto_login_pass');
+  eraseCookie('auto_login_email');
+  eraseCookie('auto_login_pass');
+
+  currentUser = null;
+
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('remember-me').checked = false;
+
+  document.getElementById('main-section').style.display = 'none';
+  document.getElementById('login-section').style.display = 'flex';
 }
   </script>
 </body>
